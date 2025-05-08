@@ -4,10 +4,10 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: #000;
+  background-color: var(--background-color, #ffffff); /* fallback voor licht */
 }
 
 #tetris {
-  border: 2px solid #fff;
-  background-color: #111;
+  border: 2px solid var(--border-color, #000);
+  background-color: var(--canvas-background, #f0f0f0); /* fallback licht */
 }
