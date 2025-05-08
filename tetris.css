@@ -1,0 +1,13 @@
+.tetris-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #000;
+}
+
+#tetris {
+  border: 2px solid #fff;
+  background-color: #111;
+}
