@@ -1,3 +1,26 @@
+import { getCurrentTheme, onThemeChange } from './themes.js';
+
+let COLORS = [null, '#FF0D72', '#0DC2FF', '#0DFF72', '#F538FF', '#FF8E0D', '#FFE138', '#3877FF'];
+
+function applyThemeToTetris(theme) {
+  COLORS = [
+    null,
+    theme.tetrisColor1 || '#FF0D72',
+    theme.tetrisColor2 || '#0DC2FF',
+    theme.tetrisColor3 || '#0DFF72',
+    theme.tetrisColor4 || '#F538FF',
+    theme.tetrisColor5 || '#FF8E0D',
+    theme.tetrisColor6 || '#FFE138',
+    theme.tetrisColor7 || '#3877FF'
+  ];
+}
+
+// Initialize with current theme
+applyThemeToTetris(getCurrentTheme());
+
+// React to theme changes
+onThemeChange(applyThemeToTetris);
+
 (function () {
   // Game configuration
   const COLS = 10;
