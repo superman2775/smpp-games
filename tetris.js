@@ -1,8 +1,5 @@
 class TetrisWidget extends GameBase {
-  constructor() {
-    super("Tetris", "Classic Tetris", "Code Copilot");
-  }
-
+  
   init(container) {
     console.log("TetrisWidget initialized");
 
