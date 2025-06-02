@@ -1,5 +1,16 @@
 
 class TetrisWidget extends GameBase {
+  init(container) {
+    const game = new TetrisGame(container);
+    game.init(container);
+  }
+}
+
+export class TetrisGame {
+
+  constructor(container) {
+    this.container = container;
+  }
 
   init(container) {
     console.log("TetrisWidget initialized");
@@ -37,29 +48,45 @@ class TetrisWidget extends GameBase {
     speedLabel.innerText = "Speed:";
     wrapper.appendChild(speedLabel);
 
-    const difficultyDisplay = document.createElement("div");
-    difficultyDisplay.style.marginTop = "4px";
-    difficultyDisplay.innerText = "Extreme";
-    wrapper.appendChild(difficultyDisplay);
+    // info: Dropdown to choose game difficulty
+    const difficultySelect = document.createElement("select");
+    difficultySelect.style.marginTop = "4px";
+    [
+      ["Easy", 1000],
+      ["Medium", 500],
+      ["Hard", 250],
+      ["Extreme", 100]
+    ].forEach(([label, value]) => {
+      const option = document.createElement("option");
+      option.value = value.toString();
+      option.textContent = label;
+      difficultySelect.appendChild(option);
+    });
+    const lastSpeed = localStorage.getItem("tetris-last-speed");
+    if (lastSpeed) difficultySelect.value = lastSpeed;
+    wrapper.appendChild(difficultySelect);
 
     const highscore = parseInt(localStorage.getItem("tetris-highscore") || "0", 10);
     highscoreDisplay.innerText = `High Score: ${highscore}`;
 
     playButton.onclick = () => {
+      localStorage.setItem("tetris-last-speed", difficultySelect.value);
       container.innerHTML = "";
-      const game = new TetrisRuntime(container, highscore);
+      const selectedSpeed = parseInt(difficultySelect.value);
+      const game = new TetrisRuntime(container, highscore, selectedSpeed);
       game.start();
     };
   }
 }
 
 class TetrisRuntime {
-  constructor(container, highscore) {
+  constructor(container, highscore, dropInterval = 1000) {
     this.container = container;
     this.highscore = highscore;
+    this.dropInterval = dropInterval;
   }
 
-  start() {
+  start(container = this.container) {
     console.log("Starting full Tetris game...");
     const canvas = document.createElement("canvas");
     canvas.width = 240;
@@ -197,9 +224,33 @@ class TetrisRuntime {
         restartButton.style.cursor = 'pointer';
         restartButton.onclick = () => {
           this.container.removeChild(gameOverMsg);
-          arena.forEach(row => row.fill(0));
-          player.score = 0;
-          updateScore();
+          const difficultyWrapper = document.createElement("div");
+          const restartSelect = document.createElement("select");
+          [
+            ["Easy", 1000],
+            ["Medium", 500],
+            ["Hard", 250],
+            ["Extreme", 100]
+          ].forEach(([label, value]) => {
+            const option = document.createElement("option");
+            option.value = value;
+            option.textContent = label;
+            restartSelect.appendChild(option);
+          });
+          difficultyWrapper.appendChild(restartSelect);
+          const confirmBtn = document.createElement("button");
+          confirmBtn.innerText = "Start";
+          confirmBtn.onclick = () => {
+            dropInterval = parseInt(restartSelect.value);
+            localStorage.setItem("tetris-last-speed", restartSelect.value);
+            this.container.innerHTML = "";
+            const game = new TetrisRuntime(this.container, 0, dropInterval);
+            game.start();
+          };
+          difficultyWrapper.appendChild(confirmBtn);
+          this.container.innerHTML = "";
+          this.container.appendChild(difficultyWrapper);
+        };
           playerReset();
         };
         gameOverMsg.appendChild(document.createElement('br'));
@@ -257,7 +308,7 @@ class TetrisRuntime {
     };
 
     let dropCounter = 0;
-    let dropInterval = 100; 
+    let dropInterval = this.dropInterval;
     let lastTime = 0;
     const update = (time = 0) => {
       const deltaTime = time - lastTime;
@@ -289,4 +340,10 @@ class TetrisRuntime {
   }
 }
 
-registerWidget(new TetrisWidget());
+TetrisWidget.meta = {
+  id: 'tetris',
+  name: 'Tetris++',
+  author: 'Code Copilot'
+};
+
+registerGame(new TetrisWidget());
