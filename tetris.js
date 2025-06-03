@@ -350,8 +350,6 @@ class TetrisRuntime {
       else if (e.key === 'ArrowRight') playerMove(1);
       else if (e.key === 'ArrowDown') playerDrop();
       else if (e.key === 'ArrowUp') playerRotate(1);
-      else if (e.key === 'q') playerRotate(-1);
-      else if (e.key === 'w') playerRotate(1);
     });
 
     playerReset();
