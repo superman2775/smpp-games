@@ -1,6 +1,8 @@
+// Central difficulty definitions
+const DIFFICULTY_LABELS = ["Impossible", "Easy", "Medium", "Hard", "Extreme"];
+const DIFFICULTY_VALUES = [50, 1000, 500, 250, 100];
 
 class TetrisWidget extends GameBase {
-
   start(container) {
     const game = new TetrisGame(container);
     game.init(container);
@@ -11,17 +13,11 @@ class TetrisWidget extends GameBase {
   }
 
   get options() {
-    return [
-      { label: "Easy", value: 1000 },
-      { label: "Medium", value: 500 },
-      { label: "Hard", value: 250 },
-      { label: "Extreme", value: 100 }
-    ];
+    return DIFFICULTY_LABELS.map((label, index) => ({ label, value: DIFFICULTY_VALUES[index] }));
   }
 }
 
 export class TetrisGame {
-
   constructor(container) {
     this.container = container;
   }
@@ -35,62 +31,60 @@ export class TetrisGame {
     wrapper.style.alignItems = "center";
     wrapper.style.justifyContent = "center";
     wrapper.style.padding = "1em";
-    wrapper.style.color = "#ccc";
     container.appendChild(wrapper);
 
     const title = document.createElement("h2");
     title.innerText = "Tetris++";
-    title.style.margin = "0";
     wrapper.appendChild(title);
 
     const highscoreDisplay = document.createElement("div");
-    highscoreDisplay.style.margin = "8px";
     wrapper.appendChild(highscoreDisplay);
 
     const playButton = document.createElement("button");
     playButton.innerText = "Play";
     wrapper.appendChild(playButton);
 
-    const speedLabel = document.createElement("div");
-    speedLabel.innerText = "Speed:";
-    wrapper.appendChild(speedLabel);
-
-    const difficultySlider = document.createElement("input");
-    difficultySlider.type = "range";
-    difficultySlider.min = "0";
-    difficultySlider.max = "3";
-    difficultySlider.value = "1";
-    difficultySlider.step = "1";
-    difficultySlider.style.marginTop = "4px";
-    const difficultyLabels = ["Easy", "Medium", "Hard", "Extreme"];
-    const difficultyValues = [1000, 500, 250, 100];
     const difficultyLabel = document.createElement("label");
     difficultyLabel.innerText = "Choose difficulty:";
     wrapper.appendChild(difficultyLabel);
 
-    const restartLabel = document.createElement("label");
-          restartLabel.innerText = "Choose difficulty:";
-          difficultyWrapper.appendChild(restartLabel);
+    const difficultySlider = document.createElement("input");
+    difficultySlider.type = "range";
+    difficultySlider.min = "0";
+    difficultySlider.max = "4";
+    difficultySlider.step = "1";
 
-          const difficultyText = document.createElement("div");
-    difficultyText.innerText = difficultyLabels[1];
-    difficultySlider.oninput = () => {
-      difficultyText.innerText = difficultyLabels[difficultySlider.value];
-    };
-    const lastIndex = difficultyValues.indexOf(parseInt(localStorage.getItem("tetris-last-speed") || "500"));
-    if (lastIndex >= 0) difficultySlider.value = lastIndex.toString();
-    difficultyText.innerText = difficultyLabels[difficultySlider.value];
+    const difficultyText = document.createElement("div");
+    const lastIndex = DIFFICULTY_VALUES.indexOf(parseInt(localStorage.getItem("tetris-last-speed") || "500"));
+    difficultySlider.value = lastIndex >= 0 ? lastIndex : 2;
+    difficultyText.innerText = DIFFICULTY_LABELS[difficultySlider.value];
     wrapper.appendChild(difficultyText);
+
+    difficultySlider.oninput = () => {
+      const idx = parseInt(difficultySlider.value);
+      difficultyText.innerText = DIFFICULTY_LABELS[idx];
+      difficultySlider.style.background = (DIFFICULTY_LABELS[idx] === "Impossible") ? "#f00" : "";
+      const old = document.getElementById("impossible-warning");
+      if (DIFFICULTY_LABELS[idx] === "Impossible") {
+        if (!old) {
+          const warning = document.createElement("div");
+          warning.id = "impossible-warning";
+          warning.innerText = "⚠️ CAUTION: You've entered a realm beyond human reaction time. Good luck.";
+          wrapper.appendChild(warning);
+        }
+      } else if (old) old.remove();
+    };
+
     wrapper.appendChild(difficultySlider);
 
     const highscore = parseInt(localStorage.getItem("tetris-highscore") || "0", 10);
     highscoreDisplay.innerText = `High Score: ${highscore}`;
 
     playButton.onclick = () => {
-      localStorage.setItem("tetris-last-speed", difficultyValues[difficultySlider.value]);
+      const speed = DIFFICULTY_VALUES[difficultySlider.value];
+      localStorage.setItem("tetris-last-speed", speed);
       container.innerHTML = "";
-      const selectedSpeed = difficultyValues[difficultySlider.value];
-      const game = new TetrisRuntime(container, highscore, selectedSpeed);
+      const game = new TetrisRuntime(container, highscore, speed);
       game.start();
     };
   }
@@ -125,7 +119,7 @@ class TetrisRuntime {
     const previewCtx = previewCanvas.getContext("2d");
     previewCtx.scale(20, 20);
 
-    const difficultyLabels = ["Easy", "Medium", "Hard", "Extreme"];
+    const DIFFICULTY_LABELS = ["Easy", "Medium", "Hard", "Extreme", "Impossible"];
     const difficultyDisplay = document.createElement("div");
     let difficultyDisplayText = () => `Mode: ${difficultyLabels[difficultyValues.indexOf(dropInterval)]}`;
     difficultyDisplay.innerText = difficultyDisplayText();
@@ -244,17 +238,31 @@ class TetrisRuntime {
           const difficultySlider = document.createElement("input");
           difficultySlider.type = "range";
           difficultySlider.min = "0";
-          difficultySlider.max = "3";
+          difficultySlider.max = "4";
           difficultySlider.step = "1";
-          const difficultyLabels = ["Easy", "Medium", "Hard", "Extreme"];
-          const difficultyValues = [1000, 500, 250, 100];
+          const difficultyLabels = ["Easy", "Medium", "Hard", "Extreme", "Impossible"];
+          const difficultyValues = [1000, 500, 250, 100, 50];
           const difficultyText = document.createElement("div");
           const lastIndex = difficultyValues.indexOf(parseInt(localStorage.getItem("tetris-last-speed") || "500"));
           if (lastIndex >= 0) difficultySlider.value = lastIndex.toString();
           else difficultySlider.value = "1";
           difficultyText.innerText = difficultyLabels[difficultySlider.value];
           difficultySlider.oninput = () => {
-            difficultyText.innerText = difficultyLabels[difficultySlider.value];
+            const idx = parseInt(difficultySlider.value);
+            difficultyText.innerText = difficultyLabels[idx];
+            if (difficultyLabels[idx] === "Impossible") {
+              difficultySlider.style.background = "#f00";
+              if (!document.getElementById("impossible-warning")) {
+                const warning = document.createElement("div");
+                warning.id = "impossible-warning";
+                warning.innerText = "⚠️ CAUTION: You've entered a realm beyond human reaction time. Good luck.";
+                difficultyWrapper.appendChild(warning);
+              }
+            } else {
+              difficultySlider.style.background = "";
+              const old = document.getElementById("impossible-warning");
+              if (old) old.remove();
+            }
           };
           const confirmBtn = document.createElement("button");
           confirmBtn.innerText = "Start";
@@ -279,8 +287,7 @@ class TetrisRuntime {
         updateScore();
       }
     };
-
-    const playerDrop = () => {
+const playerDrop = () => {
       player.pos.y++;
       if (collide(arena, player)) {
         player.pos.y--;
@@ -339,6 +346,14 @@ class TetrisRuntime {
     };
 
     const draw = () => {
+      if (dropInterval === 50) {
+        context.strokeStyle = '#f00';
+        for (let y = 0; y < 20; y++) {
+          for (let x = 0; x < 12; x++) {
+            context.strokeRect(x, y, 1, 1);
+          }
+        }
+      }
       context.fillStyle = '#000';
       context.fillRect(0, 0, canvas.width, canvas.height);
       drawMatrix(arena, { x: 0, y: 0 });
@@ -356,5 +371,4 @@ class TetrisRuntime {
     update();
   }
 }
-
 export { TetrisWidget };
