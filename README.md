@@ -1,5 +1,5 @@
 
-## Tetris
+# Tetris
 
 I am trying to make Tetris here to integrate it in Smartschool ++
 
