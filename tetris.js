@@ -1,9 +1,24 @@
 
 class TetrisWidget extends GameBase {
-  init(container) {
+
+  start(container) {
     const game = new TetrisGame(container);
     game.init(container);
   }
+
+  get title() {
+    return "Tetris ++";
+  }
+
+  get options() {
+    return [
+      { label: "Easy", value: 1000 },
+      { label: "Medium", value: 500 },
+      { label: "Hard", value: 250 },
+      { label: "Extreme", value: 100 }
+    ];
+  }
+}
 }
 
 export class TetrisGame {
@@ -35,44 +50,47 @@ export class TetrisGame {
 
     const playButton = document.createElement("button");
     playButton.innerText = "Play";
-    playButton.style.padding = "0.5em 1.2em";
-    playButton.style.borderRadius = "8px";
-    playButton.style.border = "1px solid #88a";
-    playButton.style.background = "transparent";
-    playButton.style.color = "#ccc";
-    playButton.style.cursor = "pointer";
-    playButton.style.margin = "10px 0";
     wrapper.appendChild(playButton);
 
     const speedLabel = document.createElement("div");
     speedLabel.innerText = "Speed:";
     wrapper.appendChild(speedLabel);
 
-    // info: Dropdown to choose game difficulty
-    const difficultySelect = document.createElement("select");
-    difficultySelect.style.marginTop = "4px";
-    [
-      ["Easy", 1000],
-      ["Medium", 500],
-      ["Hard", 250],
-      ["Extreme", 100]
-    ].forEach(([label, value]) => {
-      const option = document.createElement("option");
-      option.value = value.toString();
-      option.textContent = label;
-      difficultySelect.appendChild(option);
-    });
-    const lastSpeed = localStorage.getItem("tetris-last-speed");
-    if (lastSpeed) difficultySelect.value = lastSpeed;
-    wrapper.appendChild(difficultySelect);
+    const difficultySlider = document.createElement("input");
+    difficultySlider.type = "range";
+    difficultySlider.min = "0";
+    difficultySlider.max = "3";
+    difficultySlider.value = "1";
+    difficultySlider.step = "1";
+    difficultySlider.style.marginTop = "4px";
+    const difficultyLabels = ["Easy", "Medium", "Hard", "Extreme"];
+    const difficultyValues = [1000, 500, 250, 100];
+    const difficultyLabel = document.createElement("label");
+    difficultyLabel.innerText = "Choose difficulty:";
+    wrapper.appendChild(difficultyLabel);
+
+    const restartLabel = document.createElement("label");
+          restartLabel.innerText = "Choose difficulty:";
+          difficultyWrapper.appendChild(restartLabel);
+
+          const difficultyText = document.createElement("div");
+    difficultyText.innerText = difficultyLabels[1];
+    difficultySlider.oninput = () => {
+      difficultyText.innerText = difficultyLabels[difficultySlider.value];
+    };
+    const lastIndex = difficultyValues.indexOf(parseInt(localStorage.getItem("tetris-last-speed") || "500"));
+    if (lastIndex >= 0) difficultySlider.value = lastIndex.toString();
+    difficultyText.innerText = difficultyLabels[difficultySlider.value];
+    wrapper.appendChild(difficultyText);
+    wrapper.appendChild(difficultySlider);
 
     const highscore = parseInt(localStorage.getItem("tetris-highscore") || "0", 10);
     highscoreDisplay.innerText = `High Score: ${highscore}`;
 
     playButton.onclick = () => {
-      localStorage.setItem("tetris-last-speed", difficultySelect.value);
+      localStorage.setItem("tetris-last-speed", difficultyValues[difficultySlider.value]);
       container.innerHTML = "";
-      const selectedSpeed = parseInt(difficultySelect.value);
+      const selectedSpeed = difficultyValues[difficultySlider.value];
       const game = new TetrisRuntime(container, highscore, selectedSpeed);
       game.start();
     };
@@ -107,6 +125,12 @@ class TetrisRuntime {
     this.container.appendChild(previewCanvas);
     const previewCtx = previewCanvas.getContext("2d");
     previewCtx.scale(20, 20);
+
+    const difficultyLabels = ["Easy", "Medium", "Hard", "Extreme"];
+    const difficultyDisplay = document.createElement("div");
+    let difficultyDisplayText = () => `Mode: ${difficultyLabels[difficultyValues.indexOf(dropInterval)]}`;
+    difficultyDisplay.innerText = difficultyDisplayText();
+    this.container.appendChild(difficultyDisplay);
 
     const context = canvas.getContext('2d');
     context.scale(20, 20);
@@ -215,43 +239,39 @@ class TetrisRuntime {
         this.container.appendChild(gameOverMsg);
         const restartButton = document.createElement('button');
         restartButton.textContent = 'Restart';
-        restartButton.style.marginTop = '10px';
-        restartButton.style.padding = '0.4em 1em';
-        restartButton.style.fontSize = '1em';
-        restartButton.style.border = '1px solid #fff';
-        restartButton.style.background = 'transparent';
-        restartButton.style.color = 'white';
-        restartButton.style.cursor = 'pointer';
         restartButton.onclick = () => {
           this.container.removeChild(gameOverMsg);
           const difficultyWrapper = document.createElement("div");
-          const restartSelect = document.createElement("select");
-          [
-            ["Easy", 1000],
-            ["Medium", 500],
-            ["Hard", 250],
-            ["Extreme", 100]
-          ].forEach(([label, value]) => {
-            const option = document.createElement("option");
-            option.value = value;
-            option.textContent = label;
-            restartSelect.appendChild(option);
-          });
-          difficultyWrapper.appendChild(restartSelect);
+          const difficultySlider = document.createElement("input");
+          difficultySlider.type = "range";
+          difficultySlider.min = "0";
+          difficultySlider.max = "3";
+          difficultySlider.step = "1";
+          const difficultyLabels = ["Easy", "Medium", "Hard", "Extreme"];
+          const difficultyValues = [1000, 500, 250, 100];
+          const difficultyText = document.createElement("div");
+          const lastIndex = difficultyValues.indexOf(parseInt(localStorage.getItem("tetris-last-speed") || "500"));
+          if (lastIndex >= 0) difficultySlider.value = lastIndex.toString();
+          else difficultySlider.value = "1";
+          difficultyText.innerText = difficultyLabels[difficultySlider.value];
+          difficultySlider.oninput = () => {
+            difficultyText.innerText = difficultyLabels[difficultySlider.value];
+          };
           const confirmBtn = document.createElement("button");
           confirmBtn.innerText = "Start";
           confirmBtn.onclick = () => {
-            dropInterval = parseInt(restartSelect.value);
-            localStorage.setItem("tetris-last-speed", restartSelect.value);
+            dropInterval = difficultyValues[difficultySlider.value];
+            localStorage.setItem("tetris-last-speed", difficultyValues[difficultySlider.value]);
+            difficultyDisplay.innerText = difficultyDisplayText();
             this.container.innerHTML = "";
             const game = new TetrisRuntime(this.container, 0, dropInterval);
             game.start();
           };
+          difficultyWrapper.appendChild(difficultyText);
+          difficultyWrapper.appendChild(difficultySlider);
           difficultyWrapper.appendChild(confirmBtn);
           this.container.innerHTML = "";
           this.container.appendChild(difficultyWrapper);
-        };
-          playerReset();
         };
         gameOverMsg.appendChild(document.createElement('br'));
         gameOverMsg.appendChild(restartButton);
@@ -340,10 +360,4 @@ class TetrisRuntime {
   }
 }
 
-TetrisWidget.meta = {
-  id: 'tetris',
-  name: 'Tetris++',
-  author: 'Code Copilot'
-};
-
-registerGame(new TetrisWidget());
+export { TetrisWidget };
