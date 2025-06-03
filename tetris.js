@@ -19,7 +19,6 @@ class TetrisWidget extends GameBase {
     ];
   }
 }
-}
 
 export class TetrisGame {
 
