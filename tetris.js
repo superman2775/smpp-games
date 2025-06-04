@@ -11,10 +11,6 @@ class TetrisWidget extends GameBase {
     return "Tetris++";
   }
 
-  get icon() {
-    return "https://raw.githubusercontent.com/sprksoft/smpp/widgets/icons/tetris.png";
-  }
-
   get description() {
     return "A classic falling-block puzzle game with adjustable difficulty, including an Impossible mode.";
   }
