@@ -11,6 +11,10 @@ class TetrisWidget extends GameBase {
     return "Tetris++";
   }
 
+  get icon() {
+    return "icons/tetris.png";
+  }
+
   get description() {
     return "A classic falling-block puzzle game with adjustable difficulty, including an Impossible mode.";
   }
@@ -24,11 +28,39 @@ class TetrisWidget extends GameBase {
   }
 
   async render() {
-    return await this.createPreview();
+    const wrapper = document.createElement("div");
+    const canvas = document.createElement("canvas");
+    canvas.width = 240;
+    canvas.height = 400;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.scale(20, 20);
+
+    const piece = TetrisWidget.prototype.createPiece.call(this, "T");
+    piece.forEach((row, y) => {
+      row.forEach((val, x) => {
+        if (val) {
+          ctx.fillStyle = "#0f0";
+          ctx.fillRect(x + 3, y + 4, 1, 1);
+        }
+      });
+    });
+
+    wrapper.appendChild(canvas);
+    return wrapper;
   }
 
   async onMessage(msg) {
-    console.log("TetrisWidget received message:", msg);
+    if (msg === "test") {
+      console.log("[TEST] onGameStart should create player and arena...");
+      this.onGameStart();
+      if (this.player && this.arena && this.player.matrix) {
+        console.log("[PASS] onGameStart initialized core state.");
+      } else {
+        console.error("[FAIL] onGameStart did not initialize correctly.");
+      }
+    }
   }
 
   async onGameStart() {
@@ -62,7 +94,7 @@ class TetrisWidget extends GameBase {
       exitBtn.innerText = "Return to Menu";
       exitBtn.onclick = () => {
         overlay.remove();
-        this.exit();
+        this.emit("exit");
       };
       overlay.appendChild(exitBtn);
 
@@ -71,7 +103,7 @@ class TetrisWidget extends GameBase {
     }
 
     this.highscore = parseInt(localStorage.getItem("tetris-highscore") || "0", 10);
-    const canvas = this.canvas;
+    const canvas = this.getCanvas();
     const ctx = canvas.getContext("2d");
     this.ctx = ctx;
     this.score = 0;
@@ -79,8 +111,8 @@ class TetrisWidget extends GameBase {
     this.board = Array.from({ length: 20 }, () => Array(12).fill(0));
 
     this.player = {
-      pos: { x: 5, y: 0 },
-      matrix: this.createPiece('T'),
+      pos: { x: 4, y: 0 },
+      matrix: this.createPiece("T"),
       score: 0,
       updateScore: () => {
         if (this.player.score > this.highscore) {
@@ -95,6 +127,10 @@ class TetrisWidget extends GameBase {
   }
 
   onGameDraw(ctx, deltaTime) {
+    if (!this.canvas || !this.ctx) return;
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.save();
+    ctx.scale(20, 20);
     ctx.font = "1px monospace";
     ctx.fillStyle = "#fff";
     ctx.fillText(`Score: ${this.player.score}`, 0.5, 1);
@@ -103,17 +139,30 @@ class TetrisWidget extends GameBase {
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     this.drawMatrix(ctx, this.arena, { x: 0, y: 0 });
     this.drawMatrix(ctx, this.player.matrix, this.player.pos);
+    if (this.comboMessage) {
+      ctx.font = "1px monospace";
+      ctx.fillStyle = "yellow";
+      ctx.fillText(this.comboMessage, 1, 2);
+    }
   }
 
   async onKeyDown(e) {
-    if (e.code === 'ArrowLeft') this.player.pos.x--;
-    else if (e.code === 'ArrowRight') this.player.pos.x++;
-    else if (e.code === 'ArrowDown') {
+    if (!this.player) return;
+    if (e.code === "ArrowLeft") this.player.pos.x--;
+    else if (e.code === "ArrowRight") this.player.pos.x++;
+    else if (e.code === "ArrowDown") {
       this.player.pos.y++;
-      this.player.score++;
-      this.player.updateScore();
+      if (this.collide()) {
+        this.player.pos.y--;
+        this.merge();
+        this.playerReset();
+      } else {
+        this.player.score++;
+        this.player.updateScore();
+      }
+    } else if (e.code === "ArrowUp") {
+      this.rotate(this.player.matrix, 1);
     }
-    else if (e.code === 'ArrowUp') this.rotate(this.player.matrix, 1);
   }
 
   async onKeyUp(e) {
@@ -160,6 +209,59 @@ class TetrisWidget extends GameBase {
     }
     if (dir > 0) matrix.forEach(row => row.reverse());
     else matrix.reverse();
+  }
+
+  collide() {
+    const m = this.player.matrix;
+    const o = this.player.pos;
+    for (let y = 0; y < m.length; ++y) {
+      for (let x = 0; x < m[y].length; ++x) {
+        if (m[y][x] !== 0 && (this.arena[y + o.y] && this.arena[y + o.y][x + o.x]) !== 0) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  merge() {
+    this.player.matrix.forEach((row, y) => {
+      row.forEach((val, x) => {
+        if (val !== 0) {
+          this.arena[y + this.player.pos.y][x + this.player.pos.x] = val;
+        }
+      });
+    });
+
+    let rowCount = 1;
+    outer: for (let y = this.arena.length - 1; y >= 0; --y) {
+      for (let x = 0; x < this.arena[y].length; ++x) {
+        if (this.arena[y][x] === 0) {
+          continue outer;
+        }
+      }
+      const row = this.arena.splice(y, 1)[0].fill(0);
+      this.arena.unshift(row);
+      ++y;
+      const bonus = rowCount * 10;
+      this.player.score += bonus;
+      this.comboMessage = `+${bonus}`;
+      setTimeout(() => this.comboMessage = "", 1000);
+      rowCount *= 2;
+      this.player.updateScore();
+    }
+  }
+
+  playerReset() {
+    const pieces = "TJLOSZI";
+    this.player.matrix = this.createPiece(pieces[(Math.random() * pieces.length) | 0]);
+    this.player.pos.y = 0;
+    this.player.pos.x = (12 / 2 | 0) - (this.player.matrix[0].length / 2 | 0);
+    if (this.collide()) {
+      this.arena.forEach(row => row.fill(0));
+      this.player.score = 0;
+      this.player.updateScore();
+    }
   }
 }
 
