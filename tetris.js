@@ -3,6 +3,7 @@ const DIFFICULTY_LABELS = ["Impossible", "Easy", "Medium", "Hard", "Extreme"];
 const DIFFICULTY_VALUES = [50, 1000, 500, 250, 100];
 
 class TetrisWidget extends GameBase {
+  // Widget metadata
   get title() {
     return "Tetris";
   }
@@ -23,11 +24,15 @@ class TetrisWidget extends GameBase {
     return DIFFICULTY_LABELS.map((label, index) => ({ label, value: DIFFICULTY_VALUES[index] }));
   }
 
+  // Widget lifecycle hook: initialize game
   async init() {
+    console.log("[INIT] createContent()");
     return await this.createContent();
   }
 
+  // Widget lifecycle hook: render preview of game
   async render() {
+    console.log("[RENDER] generating preview canvas");
     const wrapper = document.createElement("div");
     const canvas = document.createElement("canvas");
     canvas.width = 240;
@@ -37,6 +42,7 @@ class TetrisWidget extends GameBase {
     if (!ctx) return;
     ctx.scale(20, 20);
 
+    // Draw sample piece
     const piece = TetrisWidget.prototype.createPiece.call(this, "T");
     piece.forEach((row, y) => {
       row.forEach((val, x) => {
@@ -51,7 +57,9 @@ class TetrisWidget extends GameBase {
     return wrapper;
   }
 
+  // Optional custom message handler
   async onMessage(msg) {
+    console.log("[MESSAGE]", msg);
     if (msg === "test") {
       console.log("[TEST] onGameStart should create player and arena...");
       this.onGameStart();
@@ -63,8 +71,11 @@ class TetrisWidget extends GameBase {
     }
   }
 
+  // Starts or restarts the game state
   async onGameStart() {
+    console.log("[GAME START] init game state");
     if (this.getOpt("speed") === 50) {
+      console.log("[WARNING] Impossible mode active");
       const overlay = document.createElement("div");
       overlay.style.position = "absolute";
       overlay.style.top = 0;
@@ -102,14 +113,20 @@ class TetrisWidget extends GameBase {
       return;
     }
 
+    console.log("[LOAD] loading highscore");
     this.highscore = parseInt(localStorage.getItem("tetris-highscore") || "0", 10);
     const canvas = this.getCanvas();
     const ctx = canvas.getContext("2d");
+    if (!canvas || !ctx) {
+      console.warn("[WARN] Canvas or context missing");
+      return;
+    }
     this.ctx = ctx;
     this.score = 0;
     this.tickCount = 0;
     this.board = Array.from({ length: 20 }, () => Array(12).fill(0));
 
+    // Initial player setup
     this.player = {
       pos: { x: 4, y: 0 },
       matrix: this.createPiece("T"),
@@ -122,13 +139,17 @@ class TetrisWidget extends GameBase {
       }
     };
 
+    // Create empty arena
     this.arena = Array.from({ length: 20 }, () => Array(12).fill(0));
     this.colors = [null, '#FF0D72', '#0DC2FF', '#0DFF72', '#F538FF', '#FF8E0D', '#FFE138', '#3877FF'];
+    console.log("[READY] Game initialized");
   }
 
+  // Called each draw tick
   onGameDraw(ctx, deltaTime) {
-    if (!this.canvas || !this.ctx) return;
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    const canvas = this.getCanvas();
+    if (!canvas || !ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.save();
     ctx.scale(20, 20);
     ctx.font = "1px monospace";
@@ -138,15 +159,19 @@ class TetrisWidget extends GameBase {
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     this.drawMatrix(ctx, this.arena, { x: 0, y: 0 });
-    this.drawMatrix(ctx, this.player.matrix, this.player.pos);
-    if (this.comboMessage) {
+    if (this.player?.matrix && this.player?.pos) {
+      this.drawMatrix(ctx, this.player.matrix, this.player.pos);
+    }
+    if (this.comboMessage && ctx) {
       ctx.font = "1px monospace";
       ctx.fillStyle = "yellow";
       ctx.fillText(this.comboMessage, 1, 2);
     }
   }
 
+  // Keyboard input handling
   async onKeyDown(e) {
+    console.log("[KEYDOWN]", e.code);
     if (!this.player) return;
     if (e.code === "ArrowLeft") this.player.pos.x--;
     else if (e.code === "ArrowRight") this.player.pos.x++;
@@ -166,17 +191,18 @@ class TetrisWidget extends GameBase {
   }
 
   async onKeyUp(e) {
-    console.log("KeyUp", e.code);
+    console.log("[KEYUP]", e.code);
   }
 
   async onMouse(e) {
-    console.log("Mouse", e.clientX, e.clientY);
+    console.log("[MOUSE]", e.clientX, e.clientY);
   }
 
   get tickSpeed() {
     return this.getOpt("speed") || 500;
   }
 
+  // Renders a matrix onto the canvas
   drawMatrix(ctx, matrix, offset) {
     matrix.forEach((row, y) => {
       row.forEach((val, x) => {
@@ -188,7 +214,9 @@ class TetrisWidget extends GameBase {
     });
   }
 
+  // Generate a tetromino matrix by type
   createPiece(type) {
+    console.log("[CREATE PIECE]", type);
     const pieces = {
       T: [[0, 0, 0], [1, 1, 1], [0, 1, 0]],
       O: [[2, 2], [2, 2]],
@@ -201,7 +229,9 @@ class TetrisWidget extends GameBase {
     return pieces[type];
   }
 
+  // Rotate tetromino matrix
   rotate(matrix, dir) {
+    console.log("[ROTATE]", dir);
     for (let y = 0; y < matrix.length; ++y) {
       for (let x = 0; x < y; ++x) {
         [matrix[x][y], matrix[y][x]] = [matrix[y][x], matrix[x][y]];
@@ -211,12 +241,14 @@ class TetrisWidget extends GameBase {
     else matrix.reverse();
   }
 
+  // Collision check between player piece and arena
   collide() {
     const m = this.player.matrix;
     const o = this.player.pos;
     for (let y = 0; y < m.length; ++y) {
       for (let x = 0; x < m[y].length; ++x) {
         if (m[y][x] !== 0 && (this.arena[y + o.y] && this.arena[y + o.y][x + o.x]) !== 0) {
+          console.log("[COLLISION] at", x + o.x, y + o.y);
           return true;
         }
       }
@@ -224,7 +256,9 @@ class TetrisWidget extends GameBase {
     return false;
   }
 
+  // Merge player piece into arena and check for line clears
   merge() {
+    console.log("[MERGE] merging piece into arena");
     this.player.matrix.forEach((row, y) => {
       row.forEach((val, x) => {
         if (val !== 0) {
@@ -244,6 +278,7 @@ class TetrisWidget extends GameBase {
       this.arena.unshift(row);
       ++y;
       const bonus = rowCount * 10;
+      console.log("[CLEAR] line cleared for", bonus, "points");
       this.player.score += bonus;
       this.comboMessage = `+${bonus}`;
       setTimeout(() => this.comboMessage = "", 1000);
@@ -252,12 +287,15 @@ class TetrisWidget extends GameBase {
     }
   }
 
+  // Reset the player with new piece; check for game over
   playerReset() {
+    console.log("[RESET] generating new piece");
     const pieces = "TJLOSZI";
     this.player.matrix = this.createPiece(pieces[(Math.random() * pieces.length) | 0]);
     this.player.pos.y = 0;
     this.player.pos.x = (12 / 2 | 0) - (this.player.matrix[0].length / 2 | 0);
     if (this.collide()) {
+      console.log("[GAME OVER] arena cleared");
       this.arena.forEach(row => row.fill(0));
       this.player.score = 0;
       this.player.updateScore();
