@@ -21,7 +21,19 @@ class TetrisWidget extends GameBase {
   }
 
   get options() {
-    return DIFFICULTY_LABELS.map((label, index) => ({ label, value: DIFFICULTY_VALUES[index] }));
+    return [
+      GameOption.slider("speed", "Speed", 50, 1000, 500, {
+        format: (val) => {
+          const index = DIFFICULTY_VALUES.indexOf(val);
+          const label = index !== -1 ? DIFFICULTY_LABELS[index] : val + "ms";
+          const color = ["red", "blue", "green", "gold", "orange"][index] || "white";
+          return `<span style='color:${color}'>${label}</span>`;
+        },
+        showValue: true,
+        html: true
+      })
+    ];
+  }));
   }
 
   // Widget lifecycle hook: initialize game
@@ -40,6 +52,7 @@ class TetrisWidget extends GameBase {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(20, 20);
 
     // Draw sample piece
@@ -142,6 +155,17 @@ class TetrisWidget extends GameBase {
     // Create empty arena
     this.arena = Array.from({ length: 20 }, () => Array(12).fill(0));
     this.colors = [null, '#FF0D72', '#0DC2FF', '#0DFF72', '#F538FF', '#FF8E0D', '#FFE138', '#3877FF'];
+
+    // Color canvas border to reflect difficulty
+    const difficultyColor = {
+      50: 'red',
+      1000: 'blue',
+      500: 'green',
+      250: 'gold',
+      100: 'orange'
+    }[this.getOpt("speed")];
+
+    if (canvas) canvas.style.border = `3px solid ${difficultyColor || "white"}`;
     console.log("[READY] Game initialized");
   }
 
@@ -157,7 +181,7 @@ class TetrisWidget extends GameBase {
     ctx.fillText(`Score: ${this.player.score}`, 0.5, 1);
     ctx.fillText(`Highscore: ${this.highscore || 0}`, 0.5, 2);
     ctx.fillStyle = "#000";
-    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     this.drawMatrix(ctx, this.arena, { x: 0, y: 0 });
     if (this.player?.matrix && this.player?.pos) {
       this.drawMatrix(ctx, this.player.matrix, this.player.pos);
@@ -280,8 +304,9 @@ class TetrisWidget extends GameBase {
       const bonus = rowCount * 10;
       console.log("[CLEAR] line cleared for", bonus, "points");
       this.player.score += bonus;
+      clearTimeout(this.comboTimeout);
       this.comboMessage = `+${bonus}`;
-      setTimeout(() => this.comboMessage = "", 1000);
+      this.comboTimeout = setTimeout(() => this.comboMessage = "", 1000);
       rowCount *= 2;
       this.player.updateScore();
     }
@@ -302,5 +327,39 @@ class TetrisWidget extends GameBase {
     }
   }
 }
+
+window.addEventListener("blur", () => {
+  const overlay = document.createElement("div");
+  overlay.style.position = "absolute";
+  overlay.style.inset = "0";
+  overlay.style.background = "#300";
+  overlay.style.color = "#f88";
+  overlay.style.display = "flex";
+  overlay.style.flexDirection = "column";
+  overlay.style.justifyContent = "center";
+  overlay.style.alignItems = "center";
+  overlay.style.zIndex = 200;
+
+  const msg = document.createElement("div");
+  msg.innerText = "⚠️ Something has gone wrong. If this keeps happening, contact the Smartschool ++ devs.";
+  msg.style.padding = "12px";
+  msg.style.fontSize = "16px";
+  overlay.appendChild(msg);
+
+  const cont = document.createElement("button");
+  cont.innerText = "Restart";
+  cont.onclick = () => {
+    overlay.remove();
+    const game = Array.from(document.querySelectorAll("canvas")).find(c => c.width === 240 && c.height === 400)?.closest(".game")?.__widget;
+    if (game && game.onGameStart) {
+      console.warn("[RESTART] Restarting game after blur");
+      game.onGameStart();
+    }
+  };
+  overlay.appendChild(cont);
+
+  document.body.appendChild(overlay);
+  console.error("[ERROR] Game paused due to focus loss");
+});
 
 registerWidget(new TetrisWidget());
