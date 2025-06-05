@@ -136,20 +136,14 @@ class TetrisWidget extends GameBase {
     }
     this.ctx = ctx;
     this.score = 0;
+    this.linesCleared = 0;
     this.tickCount = 0;
     this.board = Array.from({ length: 20 }, () => Array(12).fill(0));
 
     // Initial player setup
     this.player = {
       pos: { x: 4, y: 0 },
-      matrix: this.createPiece("T"),
-      score: 0,
-      updateScore: () => {
-        if (this.player.score > this.highscore) {
-          this.highscore = this.player.score;
-          localStorage.setItem("tetris-highscore", this.highscore);
-        }
-      }
+      matrix: this.createPiece("T")
     };
 
     // Create empty arena
@@ -180,6 +174,12 @@ class TetrisWidget extends GameBase {
     ctx.fillStyle = "#fff";
     ctx.fillText(`Score: ${this.player.score}`, 0.5, 1);
     ctx.fillText(`Highscore: ${this.highscore || 0}`, 0.5, 2);
+    ctx.fillText(`Lines: ${this.linesCleared || 0}`, 0.5, 3);
+    const speed = this.getOpt("speed");
+    const i = DIFFICULTY_VALUES.indexOf(speed);
+    const label = i !== -1 ? DIFFICULTY_LABELS[i] : speed + "ms";
+    ctx.fillStyle = ["red", "blue", "green", "gold", "orange"][i] || "white";
+    ctx.fillText(`Mode: ${label}`, 0.5, 3);
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     this.drawMatrix(ctx, this.arena, { x: 0, y: 0 });
@@ -206,11 +206,21 @@ class TetrisWidget extends GameBase {
         this.merge();
         this.playerReset();
       } else {
-        this.player.score++;
-        this.player.updateScore();
+        this.score++;
+        
       }
     } else if (e.code === "ArrowUp") {
       this.rotate(this.player.matrix, 1);
+    }
+  }
+
+  onGameTick() {
+    if (!this.playing) return;
+    this.player.pos.y++;
+    if (this.collide()) {
+      this.player.pos.y--;
+      this.merge();
+      this.playerReset();
     }
   }
 
@@ -302,10 +312,9 @@ class TetrisWidget extends GameBase {
       this.arena.unshift(row);
       ++y;
       const bonus = rowCount * 10;
-      console.log("[CLEAR] line cleared for", bonus, "points");
-      this.player.score += bonus;
-      clearTimeout(this.comboTimeout);
-      this.comboMessage = `+${bonus}`;
+      const lines = Math.log2(rowCount) + 1;
+      const label = lines >= 4 ? "TETRIS!" : lines === 3 ? "Triple!" : lines === 2 ? "Double!" : "Line!";
+      this.comboMessage = `+${bonus} (${label})`;
       this.comboTimeout = setTimeout(() => this.comboMessage = "", 1000);
       rowCount *= 2;
       this.player.updateScore();
@@ -321,9 +330,8 @@ class TetrisWidget extends GameBase {
     this.player.pos.x = (12 / 2 | 0) - (this.player.matrix[0].length / 2 | 0);
     if (this.collide()) {
       console.log("[GAME OVER] arena cleared");
-      this.arena.forEach(row => row.fill(0));
-      this.player.score = 0;
-      this.player.updateScore();
+      this.stopGame();
+      return;
     }
   }
 }
