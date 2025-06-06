@@ -25,7 +25,6 @@ class TetrisWidget extends GameBase {
       })
     ];
   }
-  }
 
   // Widget lifecycle hook: initialize game
   async init() {
